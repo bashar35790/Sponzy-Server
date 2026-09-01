@@ -78,9 +78,9 @@ export const exploreCreators = async (req: AuthRequest, res: Response) => {
   try {
     const creators = await prisma.user.findMany({
       where: {
-        role: 'CREATOR',
+        role: { in: ['CREATOR', 'ADMIN'] },
         status: 'ACTIVE',
-        hideProfile: false,
+        NOT: { hideProfile: true },
       },
       select: {
         id: true,
@@ -100,7 +100,7 @@ export const exploreCreators = async (req: AuthRequest, res: Response) => {
         },
       },
       orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
-      take: 20,
+      take: 30,
     });
 
     return res.json({ success: true, creators });
