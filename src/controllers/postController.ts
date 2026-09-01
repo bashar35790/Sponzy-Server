@@ -127,6 +127,12 @@ export const getFeed = async (req: AuthRequest, res: Response) => {
       };
     });
 
+    formattedPosts.sort((a, b) => {
+      if (a.user?.username === 'elenaray' && b.user?.username !== 'elenaray') return -1;
+      if (b.user?.username === 'elenaray' && a.user?.username !== 'elenaray') return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return res.json({
       success: true,
       page,
