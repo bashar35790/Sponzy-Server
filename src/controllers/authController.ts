@@ -10,7 +10,10 @@ const registerSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username must be alphanumeric or underscore'),
   email: z.string().email(),
   password: z.string().min(6),
-  isCreator: z.boolean().optional(),
+  role: z.enum(['USER', 'CREATOR']).default('USER'),
+  profession: z.string().optional(),
+  bio: z.string().optional(),
+  creatorMonthlyPrice: z.number().optional().default(0),
 });
 
 const loginSchema = z.object({
@@ -24,7 +27,7 @@ export const register = async (req: Request, res: Response) => {
 
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email: validated.email }, { username: validated.username }],
+        OR: [{ email: validated.email.toLowerCase() }, { username: validated.username.toLowerCase() }],
       },
     });
 
@@ -40,7 +43,20 @@ export const register = async (req: Request, res: Response) => {
         username: validated.username.toLowerCase(),
         email: validated.email.toLowerCase(),
         password: hashedPassword,
-        role: validated.isCreator ? 'CREATOR' : 'USER',
+        role: validated.role,
+        profession: validated.profession || undefined,
+        bio: validated.bio || undefined,
+        creatorMonthlyPrice: validated.role === 'CREATOR' ? validated.creatorMonthlyPrice : 0,
+        freeSubscription: validated.role === 'CREATOR' && validated.creatorMonthlyPrice === 0,
+        plans: validated.role === 'CREATOR' && validated.creatorMonthlyPrice > 0 ? {
+          create: [
+            {
+              name: 'Monthly VIP Membership',
+              interval: '1 Month',
+              price: validated.creatorMonthlyPrice,
+            }
+          ]
+        } : undefined,
       },
       select: {
         id: true,
@@ -49,12 +65,14 @@ export const register = async (req: Request, res: Response) => {
         email: true,
         role: true,
         avatar: true,
+        profession: true,
+        creatorMonthlyPrice: true,
         createdAt: true,
       },
     });
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, username: user.username },
       process.env.JWT_SECRET || 'sponzy_secret_key',
       { expiresIn: '7d' }
     );
